@@ -22,7 +22,7 @@ Open your terminal (or PowerShell on Windows) and clone the repository. We recom
 git clone https://github.com/stanford-cs248/asst1.git
 
 # Enter the directory
-cd cs248a-renderer-internal
+cd asst1
 
 # Initialize submodules
 git submodule update --init --recursive
