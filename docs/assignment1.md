@@ -20,9 +20,9 @@ In __Part 2__ of the assignment (which will be released on Wednesday of week 2),
 
 ### Getting started on Part 1
 
-To get started on part 1, you'll work in a Python notebook.  Please open [the part 1 notebook](notebooks/assignment1-part1/ray-triangle-intersection.ipynb) and follow the instructions in the notebook.
+To get started on part 1, you'll work in a Python notebook.  Please open [the part 1 notebook](../notebooks/assignment1-part1/ray-triangle-intersection.ipynb) and follow the instructions in the notebook.
 
-The starter code also comes with an interactive renderer that allows you to move around and render 3D scenes in real time. Follow the [interactive renderer guide](docs/interactive-renderer.md) to learn how to use it. Of course, until you implement ray-triangle intersection and camera ray casting parts of the assignment, when you press the render button in the interactive viewer you aren't going to see much!
+The starter code also comes with an interactive renderer that allows you to move around and render 3D scenes in real time. Follow the [interactive renderer guide](interactive-renderer.md) to learn how to use it. Of course, until you implement ray-triangle intersection and camera ray casting parts of the assignment, when you press the render button in the interactive viewer you aren't going to see much!
 
 ### Grading and Handin
 
