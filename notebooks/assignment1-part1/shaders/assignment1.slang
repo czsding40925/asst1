@@ -24,8 +24,10 @@ public float4 fillRed(uint2 tid)
 public float4 fillGradient(uint2 tid, uint2 canvasSize)
 {
     // TODO: Student implementation starts here.
+    float red_value = float(tid.x) / float(canvasSize.x - 1);
+    float green_value = float(tid.y) / float(canvasSize.y - 1);
 
-    return float4(1.0, 0.0, 1.0, 1.0);
+    return float4(red_value, green_value , 0.0, 1.0);
 
     // TODO: Student implementation ends here.
 }
@@ -41,7 +43,20 @@ public float4 fillCheckerboard(uint2 tid, uint2 canvasSize, uint numSquares)
 {
     // TODO: Student implementation starts here.
 
-    return float4(1.0, 0.0, 1.0, 1.0);
+    
+    float norm_x = float(tid.x) / float(canvasSize.x - 1);
+    float norm_y = float(tid.y) / float(canvasSize.y - 1);
+
+    int bin_x = int(norm_x * numSquares);
+    int bin_y = int(norm_y * numSquares); 
+
+    if (bin_x % 2 != bin_y % 2){
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+    else{
+        return float4(1.0, 1.0, 1.0, 1.0);
+    }
+    
 
     // TODO: Student implementation ends here.
 }
@@ -59,7 +74,32 @@ public float4 triangleRasterizer(uint2 tid, uint2 canvasSize, float2 v0, float2 
 {
     // TODO: Student implementation starts here.
 
-    return float4(1.0, 0.0, 1.0, 1.0);
+    float norm_x = float(tid.x) / float(canvasSize.x - 1);
+    float norm_y = float(tid.y) / float(canvasSize.y - 1);
+
+    float A_0 = v1.y - v0.y; 
+    float A_1 = v2.y - v1.y; 
+    float A_2 = v0.y - v2.y; 
+
+    float B_0 = v0.x - v1.x; 
+    float B_1 = v1.x - v2.x; 
+    float B_2 = v2.x - v0.x; 
+
+    float C_0 = v0.y*(v1.x - v0.x) - v0.x*(v1.y - v0.y);
+    float C_1 = v1.y*(v2.x - v1.x) - v1.x*(v2.y - v1.y);
+    float C_2 = v2.y*(v0.x - v2.x) - v2.x*(v0.y - v2.y);
+
+    float L_0 = A_0 * norm_x + B_0 * norm_y + C_0; 
+    float L_1 = A_1 * norm_x + B_1 * norm_y + C_1; 
+    float L_2 = A_2 * norm_x + B_2 * norm_y + C_2; 
+
+    if (L_0 <= 0 && L_1 <= 0 && L_2 <= 0){  
+        return float4(1.0, 1.0, 1.0, 1.0);
+    }
+    else{
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+    
 
     // TODO: Student implementation ends here.
 }
