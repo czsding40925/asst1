@@ -1,7 +1,8 @@
 import math;
+import texture;
+import material;
 import model;
 import primitive;
-import material;
 
 public struct RendererUniform
 {
@@ -14,7 +15,20 @@ public struct RendererUniform
     // Primitives.
     public StructuredBuffer<Triangle> triangleBuf;
     public uint triangleCount;
+    public SharedTexture3DBuffer<float4> volumeTexBuf;
+    public StructuredBuffer<Volume> volumeBuf;
+    public uint volumeCount;
+    public SDFBuffer sdfBuf;
+    // Acceleration structure.
+    public bool useBVH;
+    public BVH<Triangle> bvh;
+
+    public bool renderDepth;
+    public bool renderNormal;
 }
+
+static uint MAX_STEPS = 100;
+static float EPSILON = 1e-6;
 
 /**
  * Sample the scene at the given uv coordinate.
@@ -33,6 +47,18 @@ public float4 sample(float2 uv, RendererUniform uniforms)
 
     // TODO: Student implementation ends here.
 
+    if (uniforms.renderDepth)
+    {
+        // Map depth to [0, 1] range for visualization
+        return float4(float3(result.t), 1.0);
+    }
+
+    if (uniforms.renderNormal)
+    {
+        // Map normal from [-1, 1] to [0, 1] range for visualization
+        return float4(result.normal * 0.5 + 0.5, 1.0);
+    }
+
     // Once you have the intersection result, use the following code to shade (calculate color) for the ray.
     // The shading function needs the camera ray and the intersection result.
     SimpleMaterial simpleMaterial;
@@ -50,7 +76,7 @@ public float4 render(uint2 tid, RendererUniform uniforms)
 {
     // TODO: Student implementation starts here.
 
-    // Basic version: no supersampling (remove this implementation once you implement supersampling)
+    // Basic version: no supersampling.
     float2 uv = (float2(tid) + 0.5) / float2(uniforms.camera.canvasSize);
     return sample(uv, uniforms);
 
