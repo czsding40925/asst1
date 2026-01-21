@@ -6,13 +6,15 @@ import numpy as np
 from pyglm import glm
 import open3d as o3d
 import slangpy as spy
+from typing import Dict
 
-from cs248a_renderer.model.bounding_box import BoundingBox3D, BoundingBoxObject
+from cs248a_renderer.model.primitive import Primitive
+from cs248a_renderer.model.bounding_box import BoundingBox3D
 from cs248a_renderer.model.scene_object import SceneObject
 
 
 @dataclass
-class Triangle:
+class Triangle(Primitive):
     vertices: List[glm.vec3] = field(
         default_factory=lambda: [glm.vec3(0.0) for _ in range(3)]
     )
@@ -26,9 +28,28 @@ class Triangle:
         ]
         return Triangle(vertices=transformed_vertices, colors=self.colors)
 
+    @property
+    def bounding_box(self) -> BoundingBox3D:
+        min_corner = glm.vec3(np.inf)
+        max_corner = glm.vec3(-np.inf)
+        for v in self.vertices:
+            min_corner = glm.min(min_corner, v)
+            max_corner = glm.max(max_corner, v)
+        return BoundingBox3D(min=min_corner, max=max_corner)
+
+    def get_triangle(self) -> Dict:
+        return {
+            "vertices": [
+                np.array([v.x, v.y, v.z], dtype=np.float32) for v in self.vertices
+            ],
+            "colors": [
+                np.array([c.x, c.y, c.z], dtype=np.float32) for c in self.colors
+            ],
+        }
+
 
 @dataclass
-class Mesh(SceneObject, BoundingBoxObject):
+class Mesh(SceneObject):
     _o3d_mesh: o3d.geometry.TriangleMesh | None = None
     triangles: List[Triangle] = field(default_factory=list)
     _bounding_box: BoundingBox3D | None = None
@@ -69,20 +90,12 @@ class Mesh(SceneObject, BoundingBoxObject):
 def create_triangle_buf(module: spy.Module, triangles: List[Triangle]) -> spy.NDBuffer:
     device = module.device
     triangle_buf = spy.NDBuffer(
-        device=device, dtype=module.Triangle.as_struct(), shape=(len(triangles),)
+        device=device,
+        dtype=module.Triangle.as_struct(),
+        shape=(max(len(triangles), 1),),
     )
     cursor = triangle_buf.cursor()
     for idx, triangle in enumerate(triangles):
-        cursor[idx].write(
-            {
-                "vertices": [
-                    np.array([v.x, v.y, v.z], dtype=np.float32)
-                    for v in triangle.vertices
-                ],
-                "colors": [
-                    np.array([c.x, c.y, c.z], dtype=np.float32) for c in triangle.colors
-                ],
-            }
-        )
+        cursor[idx].write(triangle.get_triangle())
     cursor.apply()
     return triangle_buf

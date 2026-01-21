@@ -14,17 +14,20 @@ from cs248a_renderer.view_model.scene_manager import SceneManager
 class SceneEditorArgs(WindowArgs):
     scene_manager: SceneManager
     editing_object: BehaviorSubject[SceneObject | None]
+    mesh_outdated: BehaviorSubject[bool]
 
 
 class SceneEditorWindow(Window):
     _scene_manager: SceneManager
     _editing_object: BehaviorSubject[SceneObject | None]
     _dnd_store: dict[int, str]
+    _mesh_outdated: BehaviorSubject[bool]
 
     def __init__(self, **kwargs: Unpack[SceneEditorArgs]) -> None:
         super().__init__(**kwargs)
         self._scene_manager = kwargs["scene_manager"]
         self._editing_object = kwargs["editing_object"]
+        self._mesh_outdated = kwargs["mesh_outdated"]
         self._dnd_store = {}
 
     def render_window(self, time: float, delta_time: float, open: bool | None) -> bool:
@@ -40,7 +43,7 @@ class SceneEditorWindow(Window):
                 if imgui.button("Add Empty SceneObject"):
                     new_object = SceneObject()
                     self._scene_manager.scene.add_object(new_object)
-
+                    self._mesh_outdated.on_next(True)
                 # if not has_volume_scene and not has_nerf_scene:
                 #     imgui.text_colored(ImVec4(1.0, 0.0, 0.0, 1.0), "NO SCENE LOADED")
                 # else:
@@ -96,6 +99,7 @@ class SceneEditorWindow(Window):
                     print(f"Dropping on {node.name}")
                     if payload != node.name:
                         self._scene_manager.scene.reparent(payload, node.name)
+                        self._mesh_outdated.on_next(True)
                 imgui.end_drag_drop_target()
 
             if not is_root:
@@ -106,6 +110,7 @@ class SceneEditorWindow(Window):
             if not is_root:
                 if imgui.button(f"Delete {node.name}"):
                     self._scene_manager.scene.remove_object(node.name)
+                    self._mesh_outdated.on_next(True)
                     imgui.tree_pop()
                     imgui.pop_id()
                     return
@@ -120,7 +125,7 @@ class SceneEditorWindow(Window):
         )
         if changed:
             transform.position = glm.vec3(*position)
-
+            self._mesh_outdated.on_next(True)
         # Rotation
         changed, rotation = imgui.input_float4(
             f"Rotation##{name}",
@@ -135,6 +140,7 @@ class SceneEditorWindow(Window):
             transform.rotation = glm.quat(
                 rotation[0], rotation[1], rotation[2], rotation[3]
             )
+            self._mesh_outdated.on_next(True)
 
         # Scale
         changed, scale = imgui.drag_float3(
@@ -142,10 +148,11 @@ class SceneEditorWindow(Window):
         )
         if changed:
             transform.scale = glm.vec3(*scale)
-
+            self._mesh_outdated.on_next(True)
         # Edit Button
         if imgui.button(f"Edit Transform##{name}"):
             if self._editing_object.value == node:
                 self._editing_object.on_next(None)
             else:
                 self._editing_object.on_next(node)
+                self._mesh_outdated.on_next(True)

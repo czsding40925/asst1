@@ -1,4 +1,6 @@
-# CS 248A Assignment 1 (Due Jan 26, 11:59pm)
+# CS 248A Assignment 1: Ray Casting Triangle Meshes, Volumes, and Signed Distance Fields 
+
+__Due Jan 26, 11:59pm__
 
 ## Environment Setup
 
@@ -23,6 +25,20 @@ In __Part 2__ of the assignment (which will be released on Wednesday of week 2),
 To get started on part 1, you'll work in a Python notebook.  Please open [the part 1 notebook](../notebooks/assignment1-part1/ray-triangle-intersection.ipynb) and follow the instructions in the notebook.
 
 The starter code also comes with an interactive renderer that allows you to move around and render 3D scenes in real time. Follow the [interactive renderer guide](interactive-renderer.md) to learn how to use it. Of course, until you implement ray-triangle intersection and camera ray casting parts of the assignment, when you press the render button in the interactive viewer you aren't going to see much!
+
+### Getting started on Part 2
+
+Once you finish Part 1 of the assignment, you can move on to the second part.
+
+There're three sub-tasks in Part 2:
+
+1. Implement a ray-volume (occupancy grid) intersection algorithm. Please refer to the [ray-volume intersection notebook](../notebooks/assignment1-part2/ray-volume-intersection.ipynb) for details.
+2. Implement a ray-SDF intersection algorithm using sphere tracing. Please refer to the [ray-SDF intersection notebook](../notebooks/assignment1-part2/ray-sdf-intersection.ipynb) for details.
+3. Implement a bounding volume hierarchy (BVH) to accelerate ray-triangle intersection. Please refer to the [BVH notebook](../notebooks/assignment1-part2/bvh.ipynb) for details.
+
+There's no dependency between these three tasks, but we strongly recommend you to do them in the above order.
+
+Once you finished BVH implementation, you can enable BVH acceleration in the interactive renderer by clicking the `Build BVH` in the `Renderer` top menu item.
 
 ### Grading and Handin
 

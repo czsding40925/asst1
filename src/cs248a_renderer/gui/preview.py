@@ -7,6 +7,7 @@ from typing import Tuple, Unpack
 from imgui_bundle import ImVec2, ImVec4, imgui, imgui_ctx, imguizmo
 from pyglm import glm
 from reactivex import Observable
+from reactivex.subject import BehaviorSubject
 import math
 import slangpy as spy
 import numpy as np
@@ -38,6 +39,7 @@ class PreviewWindowArgs(WindowArgs):
     scene_manager: SceneManager
     canvas_size: Observable[Tuple[int, int]]
     editing_object: Observable[SceneObject | None]
+    mesh_outdated: BehaviorSubject[bool]
 
 
 class PreviewWindow(Window):
@@ -61,13 +63,14 @@ class PreviewWindow(Window):
         ),
     )
     _editing_object: SceneObject | None
+    _mesh_outdated: BehaviorSubject[bool]
     _gizmo_op: int = 0
     _gizmo_mode: int = 0
 
     def __init__(self, **kwargs: Unpack[PreviewWindowArgs]) -> None:
         super().__init__(**kwargs)
         self._scene_manager = kwargs["scene_manager"]
-
+        self._mesh_outdated = kwargs["mesh_outdated"]
         # Keep track of the canvas size (width, height) from the observable so
         # we can adapt the camera FOV depending on the viewport vs canvas aspect.
         self._canvas_size: tuple[int, int] | None = None
@@ -532,6 +535,7 @@ class PreviewWindow(Window):
                     glm.length(rotation_mat[1]),
                     glm.length(rotation_mat[2]),
                 )
+                self._mesh_outdated.on_next(True)
 
         # Draw view manipulator (positioned at top-right of the image).
         image_right = image_pos.x + image_size.x

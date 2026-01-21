@@ -4,8 +4,11 @@ A module defining the scene data structure.
 
 from dataclasses import dataclass, field
 from typing import Tuple, List
+import numpy as np
+from pyglm import glm
 
 from cs248a_renderer.model.cameras import PerspectiveCamera
+from cs248a_renderer.model.volumes import DenseVolume
 from cs248a_renderer.model.scene_object import SceneObject
 from cs248a_renderer.model.mesh import Triangle, Mesh
 
@@ -23,6 +26,7 @@ class Scene:
 
     # Primitives.
     _triangles: List[Triangle] = field(default_factory=list)
+    _volumes: List[DenseVolume] = field(default_factory=list)
 
     def __post_init__(self):
         self.lookup[self.root.name] = self.root
@@ -126,6 +130,21 @@ class Scene:
                     self._triangles.append(transformed_tri)
             stack.extend(current.children)
         return self._triangles
+
+    def extract_volumes(self):
+        """Extract all dense volumes in the scene from SceneObject."""
+        self._volumes = []
+
+        # Depth-first traversal to extract volumes.
+        stack = [self.root]
+        while stack:
+            current = stack.pop(-1)
+            if current is None:
+                continue
+            if type(current) is DenseVolume:
+                self._volumes.append(current)
+            stack.extend(current.children)
+        return self._volumes
 
     def __repr__(self):
         return self.root.desc()

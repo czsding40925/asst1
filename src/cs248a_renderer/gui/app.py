@@ -3,6 +3,7 @@ Volumetric renderer application.
 """
 
 import asyncio
+from dataclasses import dataclass
 from pathlib import Path
 import logging
 from typing import Tuple
@@ -13,6 +14,8 @@ from slangpy_imgui_bundle.app import App
 import slangpy as spy
 from slangpy_nn.utils import slang_include_paths
 from slangpy_imgui_bundle.utils.file_dialog import async_file_dialog
+from multiprocessing import Pipe, Process
+from multiprocessing.connection import Connection
 
 from cs248a_renderer import SHADER_PATH
 from cs248a_renderer.gui.dockspace import VolumetricDockspace
@@ -20,6 +23,8 @@ from cs248a_renderer.gui.preview import PreviewWindow
 from cs248a_renderer.gui.renderer import RendererWindow
 from cs248a_renderer.gui.scene_editor import SceneEditorWindow
 from cs248a_renderer.model.scene_object import SceneObject
+from cs248a_renderer.model.mesh import Triangle
+from cs248a_renderer.model.bvh import BVH
 from cs248a_renderer.view_model.scene_manager import SceneManager
 
 # from cs248a_renderer.renderer.volume_renderer import VolumeRenderer
@@ -39,6 +44,35 @@ elif _system in ("Windows", "Linux"):
 else:
     # Default to vulkan for unknown/other platforms
     DEVICE_TYPE = spy.DeviceType.vulkan
+
+
+@dataclass
+class BVHBuildProgress:
+    current: int
+    total: int
+
+
+@dataclass
+class BVHBuildResult:
+    triangles: list[Triangle]
+    bvh: BVH
+
+
+def bvh_worker(conn: Connection) -> None:
+    """
+    Worker process for BVH construction.
+    """
+    triangles, max_nodes = conn.recv()
+
+    def on_progress(current: int, total: int) -> None:
+        conn.send(BVHBuildProgress(current=current, total=total))
+
+    bvh = BVH(
+        primitives=triangles,
+        max_nodes=max_nodes,
+        on_progress=on_progress,
+    )
+    conn.send(BVHBuildResult(triangles=triangles, bvh=bvh))
 
 
 class InteractiveRendererApp(App):
@@ -63,6 +97,12 @@ class InteractiveRendererApp(App):
 
     _on_load_mesh: Subject[None] = Subject()
 
+    _mesh_outdated: BehaviorSubject[bool] = BehaviorSubject(True)
+    _build_bvh_request: Subject[None] = Subject()
+    _bvh_process: Process | None = None
+    _bvh_conn: Connection | None = None
+    _bvh_progress: BehaviorSubject[Tuple[int, int]] = BehaviorSubject((0, 0))
+
     def __init__(self) -> None:
         shader_paths = [SHADER_PATH]
         shader_paths.extend(slang_include_paths())
@@ -74,6 +114,9 @@ class InteractiveRendererApp(App):
         self._reload_font(self.font_size)
 
         self._on_load_mesh.subscribe(lambda _: asyncio.create_task(self._load_mesh()))
+        self._build_bvh_request.subscribe(
+            lambda _: asyncio.create_task(self.build_bvh(1024))
+        )
 
         # --------------------- Volume Renderer  --------------------- #
 
@@ -104,7 +147,12 @@ class InteractiveRendererApp(App):
             file_subjects={
                 "on_load_mesh": self._on_load_mesh,
             },
-            render_request=self.render_request,
+            renderer_state={
+                "render_request": self.render_request,
+                "mesh_outdated": self._mesh_outdated,
+                "build_bvh": self._build_bvh_request,
+                "bvh_progress": self._bvh_progress,
+            },
         )
 
         self._render_targets = [
@@ -116,6 +164,7 @@ class InteractiveRendererApp(App):
                 scene_manager=self.scene_manager,
                 canvas_size=self.canvas_size,
                 editing_object=self.editing_object,
+                mesh_outdated=self._mesh_outdated,
             ),
             RendererWindow(
                 device=self.device,
@@ -132,6 +181,7 @@ class InteractiveRendererApp(App):
                 on_close=lambda: self._scene_editor_open.on_next(False),
                 scene_manager=self.scene_manager,
                 editing_object=self.editing_object,
+                mesh_outdated=self._mesh_outdated,
             ),
         ]
 
@@ -144,20 +194,9 @@ class InteractiveRendererApp(App):
         self.render_texture.on_next((texture, texture_id))
 
     def _on_render_request(self, _) -> None:
-        # if self.scene_manager.volume_scene is not None:
-        #     self.volume_renderer.render(
-        #         scene=self.scene_manager.volume_scene,
-        #         view_mat=self.scene_manager.volume_scene.camera.view_matrix(),
-        #         fov=self.scene_manager.volume_scene.camera.fov,
-        #         use_albedo_volume=self.scene_manager.volume_scene.volume.channels == 4,
-        #     )
-        # elif self.scene_manager.nerf_scene is not None:
-        #     self.nerf_renderer.render(
-        #         scene=self.scene_manager.nerf_scene,
-        #         view_mat=self.scene_manager.nerf_scene.camera.view_matrix(),
-        #         fov=self.scene_manager.nerf_scene.camera.fov,
-        #     )
-        self.core_renderer.load_scene(self.scene_manager.scene)
+        if self._mesh_outdated.value:
+            self.core_renderer.load_triangles(self.scene_manager.scene)
+            self._mesh_outdated.on_next(False)
         self.core_renderer.render(
             view_mat=self.scene_manager.scene.camera.view_matrix(),
             fov=self.scene_manager.scene.camera.fov,
@@ -185,6 +224,7 @@ class InteractiveRendererApp(App):
         mesh_path = await self._choose_file(filters=["Obj Files", "*.obj"])
         if mesh_path is not None:
             self.scene_manager.load_mesh(mesh_path=mesh_path)
+            self._mesh_outdated.on_next(True)
 
     async def _choose_file(self, filters: list[str] = []) -> Path | None:
         files = await async_file_dialog(
@@ -198,3 +238,46 @@ class InteractiveRendererApp(App):
             logger.info("Selected file: %s", file_path)
             return file_path
         return None
+
+    async def build_bvh(self, max_nodes: int):
+        if self._bvh_process is not None:
+            logger.warning("BVH build already in progress.")
+            return
+
+        triangles = self.scene_manager.scene.extract_triangles()
+        if len(triangles) == 0:
+            logger.warning("No triangles to build BVH.")
+            return
+
+        parent_conn, child_conn = Pipe()
+        self._bvh_conn = parent_conn
+        self._bvh_process = Process(
+            target=bvh_worker,
+            args=(child_conn,),
+        )
+        self._bvh_process.start()
+
+        # Send data to worker
+        self._bvh_conn.send((triangles, max_nodes))
+
+        # Monitor progress
+        while True:
+            if self._bvh_conn.poll():
+                msg = self._bvh_conn.recv()
+                if isinstance(msg, BVHBuildProgress):
+                    current, total = msg.current, msg.total
+                    self._bvh_progress.on_next((current, total))
+                else:
+                    break
+            await asyncio.sleep(0.0)
+
+        self._bvh_process.join()
+        self._bvh_process = None
+        self._bvh_conn = None
+        self._bvh_progress.on_next((0, 0))
+
+        # Retrieve BVH result
+        result = msg
+        logger.info("BVH build completed with %d nodes.", len(result.bvh.nodes))
+        self.core_renderer.load_bvh(result.triangles, result.bvh)
+        self._mesh_outdated.on_next(False)

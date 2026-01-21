@@ -22,8 +22,10 @@ def setup_device(notebook_shader_paths: List[Path]) -> spy.Device:
 
 class RendererModules:
     math_module: spy.Module
-    model_module: spy.Module
+    texture_module: spy.Module
+    material_module: spy.Module
     primitive_module: spy.Module
+    model_module: spy.Module
     renderer_module: spy.Module
 
     def __init__(self, device: spy.Device):
@@ -31,19 +33,24 @@ class RendererModules:
             device=device,
             path="math.slang",
         )
-        self.model_module = spy.Module.load_from_file(
+        self.texture_module = spy.Module.load_from_file(
             device=device,
-            path="model.slang",
+            path="texture.slang",
+            link=[self.math_module],
+        )
+        self.material_module = spy.Module.load_from_file(
+            device=device,
+            path="material.slang",
             link=[self.math_module],
         )
         self.primitive_module = spy.Module.load_from_file(
             device=device,
             path="primitive.slang",
-            link=[self.math_module, self.model_module],
+            link=[self.math_module, self.texture_module],
         )
-        self.material_module = spy.Module.load_from_file(
+        self.model_module = spy.Module.load_from_file(
             device=device,
-            path="material.slang",
+            path="model.slang",
             link=[self.math_module],
         )
         self.renderer_module = spy.Module.load_from_file(
@@ -51,8 +58,9 @@ class RendererModules:
             path="renderer.slang",
             link=[
                 self.math_module,
-                self.model_module,
-                self.primitive_module,
+                self.texture_module,
                 self.material_module,
+                self.primitive_module,
+                self.model_module,
             ],
         )
