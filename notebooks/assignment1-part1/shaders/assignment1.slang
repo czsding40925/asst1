@@ -24,8 +24,8 @@ public float4 fillRed(uint2 tid)
 public float4 fillGradient(uint2 tid, uint2 canvasSize)
 {
     // TODO: Student implementation starts here.
-    float red_value = float(tid.x) / float(canvasSize.x - 1);
-    float green_value = float(tid.y) / float(canvasSize.y - 1);
+    float red_value = float(tid.x) / float(canvasSize.x);
+    float green_value = float(tid.y) / float(canvasSize.y);
 
     return float4(red_value, green_value , 0.0, 1.0);
 
@@ -44,8 +44,8 @@ public float4 fillCheckerboard(uint2 tid, uint2 canvasSize, uint numSquares)
     // TODO: Student implementation starts here.
 
     
-    float norm_x = float(tid.x) / float(canvasSize.x - 1);
-    float norm_y = float(tid.y) / float(canvasSize.y - 1);
+    float norm_x = float(tid.x) / float(canvasSize.x);
+    float norm_y = float(tid.y) / float(canvasSize.y);
 
     int bin_x = int(norm_x * numSquares);
     int bin_y = int(norm_y * numSquares); 
@@ -74,8 +74,8 @@ public float4 triangleRasterizer(uint2 tid, uint2 canvasSize, float2 v0, float2 
 {
     // TODO: Student implementation starts here.
 
-    float norm_x = float(tid.x) / float(canvasSize.x - 1);
-    float norm_y = float(tid.y) / float(canvasSize.y - 1);
+    float norm_x = float(tid.x) / float(canvasSize.x);
+    float norm_y = float(tid.y) / float(canvasSize.y);
 
     float A_0 = v1.y - v0.y; 
     float A_1 = v2.y - v1.y; 
@@ -92,6 +92,7 @@ public float4 triangleRasterizer(uint2 tid, uint2 canvasSize, float2 v0, float2 
     float L_0 = A_0 * norm_x + B_0 * norm_y + C_0; 
     float L_1 = A_1 * norm_x + B_1 * norm_y + C_1; 
     float L_2 = A_2 * norm_x + B_2 * norm_y + C_2; 
+
 
     if (L_0 <= 0 && L_1 <= 0 && L_2 <= 0){  
         return float4(1.0, 1.0, 1.0, 1.0);
@@ -146,8 +147,32 @@ public float4 rayTrianglesTest(uint2 tid, uint2 canvasSize, StructuredBuffer<Tri
     Ray ray = Ray(float3(uv, 0.0), float3(0.0, 0.0, -1.0), float2(0.0, float.maxValue));
 
     // TODO: Student implementation starts here.
+    Optional<RayHitResult> curr_Hit; 
+    float4 curr_color = float4(0.0, 0.0, 0.0, 1.0); 
+    float curr_smallest_t = float.maxValue; 
+    for (int i = 0; i < triangleCount; i++){
+        // Get current triagle and hit 
+        Triangle triangle = triangles[i]; 
+        Optional<RayHitResult> hitResult = triangle.hit(ray);
 
-    return float4(1.0, 0.0, 1.0, 1.0);
+        // continue if it doesn't hit 
+        if (!hitResult.hasValue){
+            continue; 
+        }
+        else{
+            if (-hitResult.value.t <= curr_smallest_t){
+                curr_smallest_t = -hitResult.value.t; 
+                curr_color = float4(triangle.averageColor(), 1.0);
+            }
+            else{
+                continue;
+            }  
+        }
+    }
+    return curr_color; 
+    
+
+    // return float4(1.0, 0.0, 1.0, 1.0);
 
     // TODO: Student implementation starts here.
 }

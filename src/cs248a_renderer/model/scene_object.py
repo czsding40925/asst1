@@ -31,6 +31,10 @@ class SceneObject:
         :return: The 4x4 world transform matrix.
         """
         # TODO: Student implementation starts here.
+        if len(self.children) == 0:
+            return self.transform.get_matrix()
+        else: 
+            return glm.mat4(self.get_transform_matrix() * self.transform.get_matrix())
 
         return self.transform.get_matrix()
 

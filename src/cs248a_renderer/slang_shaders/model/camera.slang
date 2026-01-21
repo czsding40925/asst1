@@ -19,8 +19,13 @@ public struct Camera
     public Ray generateRay(float2 uv)
     {
         // TODO: Student implementation starts here.
+        float2 realigned_pixel = (uv * float2(canvasSize) + 0.5) - 0.5 * float2(canvasSize); 
+        float3 direction = normalize(float3(realigned_pixel, -focalLength)); 
 
-        return Ray(float3(0.0), float3(0.0));
+        float3 origin = mul(invViewMatrix, float4(0.0, 0.0, 0.0, 1.0)).xyz; 
+        float3 dir_transformed = normalize(mul(invViewMatrix, float4(direction, 0.0)).xyz);
+
+        return Ray(origin, dir_transformed, float2(0.0, float.maxValue));
 
         // TODO: Student implementation ends here.
     }
