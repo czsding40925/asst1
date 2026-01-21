@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+from threading import local
 from typing import List
 from pyglm import glm
 
@@ -31,12 +32,13 @@ class SceneObject:
         :return: The 4x4 world transform matrix.
         """
         # TODO: Student implementation starts here.
-        if len(self.children) == 0:
-            return self.transform.get_matrix()
+        local_transform = self.transform.get_matrix()
+        if self.parent == None: 
+            return local_transform
         else: 
-            return glm.mat4(self.get_transform_matrix() * self.transform.get_matrix())
+            return self.parent.get_transform_matrix() * self.transform.get_matrix()
 
-        return self.transform.get_matrix()
+        # return self.transform.get_matrix()
 
         # TODO: Student implementation ends here.
 

@@ -22,10 +22,11 @@ public struct Camera
         float2 realigned_pixel = (uv * float2(canvasSize) + 0.5) - 0.5 * float2(canvasSize); 
         float3 direction = normalize(float3(realigned_pixel, -focalLength)); 
 
-        float3 origin = mul(invViewMatrix, float4(0.0, 0.0, 0.0, 1.0)).xyz; 
-        float3 dir_transformed = normalize(mul(invViewMatrix, float4(direction, 0.0)).xyz);
+        // float3 origin = mul(invViewMatrix, float4(0.0, 0.0, 0.0, 1.0)).xyz; 
+        // float3 dir_transformed = normalize(mul(invViewMatrix, float4(direction, 0.0)).xyz);
 
-        return Ray(origin, dir_transformed, float2(0.0, float.maxValue));
+        // return Ray(origin, dir_transformed, float2(0.0, float.maxValue));
+        return Ray(float3(0.0, 0.0, 0.0), direction, float2(0.0, float.maxValue)).transform(invViewMatrix);
 
         // TODO: Student implementation ends here.
     }
