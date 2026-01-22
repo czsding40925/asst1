@@ -88,10 +88,29 @@ public float4 sample(float2 uv, RendererUniform uniforms)
             continue; 
         }
     }
+    
+
+    // Volume 
+    StructuredBuffer<Volume> volume = uniforms.volumeBuf; 
+    for (int i = 0; i < uniforms.volumeCount; i++){
+        Volume curr_volume = volume[i]; 
+        Optional<RayHitResult> curr_volume_hit = curr_volume.hit(ray, uniforms.volumeTexBuf);
+        if (!curr_volume_hit.hasValue){
+            continue; 
+        } else {
+            if (curr_volume_hit.value.t < curr_smallest_t){
+                curr_smallest_t = curr_volume_hit.value.t; 
+                curr_hit.t = curr_volume_hit.value.t; 
+                curr_hit.normal = curr_volume_hit.value.normal;
+                hitAnything = true; 
+            }
+        }
+    }
+    // TODO: Student implementation ends here.
+
     if (!hitAnything)
         return uniforms.ambientColor;
     result = curr_hit; 
-    // TODO: Student implementation ends here.
 
     if (uniforms.renderDepth)
     {

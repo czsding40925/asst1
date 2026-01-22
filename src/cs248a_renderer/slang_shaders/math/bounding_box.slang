@@ -38,7 +38,7 @@ public struct BoundingBox
     public float2 hit(Ray ray)
     {
         // TODO: Student implementation starts here.
-
+        
         return float2(0.0, 0.0);
 
         // TODO: Student implementation ends here.
