@@ -160,8 +160,8 @@ public float4 rayTrianglesTest(uint2 tid, uint2 canvasSize, StructuredBuffer<Tri
             continue; 
         }
         else{
-            if (-hitResult.value.t <= curr_smallest_t){
-                curr_smallest_t = -hitResult.value.t; 
+            if (hitResult.value.t <= curr_smallest_t && hitResult.value.t >= ray.tRange.x){
+                curr_smallest_t = hitResult.value.t; 
                 curr_color = float4(triangle.averageColor(), 1.0);
             }
             else{

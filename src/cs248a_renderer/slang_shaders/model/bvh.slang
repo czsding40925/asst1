@@ -88,13 +88,77 @@ public struct BVH<T>
     }
 
     // BVH traversal to find the closest hit.
-    public Optional<HitResult> hit(Ray ray)
-    {
+    public Optional<HitResult> hit(Ray ray){
         // Initialize traversal.
         Optional<HitResult> hitResult = Optional<HitResult>();
         HitStack<64> stack;
 
         // TODO: Student implementation starts here.
+
+        float bestT = ray.tRange.y; 
+
+        stack.push(0);
+
+        while(!stack.isEmpty()){
+            uint node_idx = stack.pop();
+            BVHNode node = nodes[node_idx];
+            
+            float2 tbox = node.hit(ray);
+            float tEnter = tbox.x;
+            float tExit = tbox.y;
+
+            if (tEnter > tExit) continue;
+            if (tExit < ray.tRange.x) continue;
+            if (tEnter > bestT) continue;
+
+            bool isLeaf = (node.left == -1) && (node.right == -1);
+
+            if (isLeaf){
+                int start = node.primLeft;
+                int end = node.primRight;
+                if (start < 0 || end < 0 ) continue;
+
+                for (int i = start; i < end; ++i){
+                    Optional<RayHitResult> pr = primitives[i].hit(ray);
+                    if (!pr.hasValue) continue;
+
+                    RayHitResult h = pr.value;
+                    if (h.t>=bestT) continue;
+                    if (h.t<ray.tRange.x) continue;
+                    bestT = h.t;
+                    HitResult HIT;
+                    HIT.primitive = primitives[i];
+                    HIT.rayHitResult = h;
+                    hitResult = Optional<HitResult>(HIT);
+                }
+            }else{
+                int l = node.left;
+                int r = node.right;
+                
+                float2 to_l = nodes[l].hit(ray);
+                float2 to_r = nodes[r].hit(ray);
+                bool hitL = (to_l.x <= to_l.y) && (to_l.y >= ray.tRange.x) && (to_l.x <= bestT);
+                bool hitR = (to_r.x <= to_r.y) && (to_r.y >= ray.tRange.x) && (to_r.x <= bestT);
+
+                if (!hitL && !hitR) continue;
+
+                if (hitL && hitR){
+                    if (to_l.x < to_r.x){
+                        stack.push((uint)r);
+                        stack.push((uint)l);
+                    }else{
+                        stack.push((uint)l);
+                        stack.push((uint)r);
+                    }
+                }
+                else if (hitL){
+                    stack.push((uint)l);
+                }
+                else {
+                    stack.push((uint)r);
+                }
+            }
+        }
 
         // TODO: Student implementation ends here.
 

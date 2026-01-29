@@ -97,7 +97,10 @@ public struct SphereSDF : ISDF
     {
         // TODO: Student implementation starts here.
 
-        return 0.0;
+        // position in object space after transformation 
+        float3 pObj = mul(invModelMatrix, float4(point, 1.0)).xyz;
+
+        return length(pObj - center) - radius;
 
         // TODO: Student implementation ends here.
     }
@@ -105,8 +108,17 @@ public struct SphereSDF : ISDF
     public float3 normal(float3 point)
     {
         // TODO: Student implementation starts here.
+        float3 pObj = mul(invModelMatrix, float4(point, 1.0)).xyz;
+        float3 nObj = pObj - center;
 
-        return float3(0.0);
+        if (length(nObj) <= 1e-12){
+            nObj = float3(0, 0, 1); 
+        } else{
+            nObj = normalize(nObj); 
+        }
+        float3 nWorld = mul(transpose(invModelMatrix), float4(nObj, 0.0)).xyz;
+        return normalize(nWorld); 
+
 
         // TODO: Student implementation ends here.
     }
@@ -121,8 +133,10 @@ public struct CubeSDF : ISDF
     public float sdf(float3 point)
     {
         // TODO: Student implementation starts here.
+        float3 pObj = mul(invModelMatrix, float4(point, 1.0)).xyz;
 
-        return 0.0;
+        float3 q = abs(pObj) - size;
+        return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 
         // TODO: Student implementation ends here.
     }
@@ -130,8 +144,31 @@ public struct CubeSDF : ISDF
     public float3 normal(float3 point)
     {
         // TODO: Student implementation starts here.
+        float3 pObj = mul(invModelMatrix, float4(point, 1.0)).xyz;
 
-        return float3(0.0);
+        float3 q = abs(pObj) - size;
+        float g = max(q.x, max(q.y, q.z));
+        float3 w = max(q, 0.0);
+
+        float3 gradAbs;
+        if (g > 0.0)
+        {
+            float l = length(w);
+            gradAbs = (l > 1e-12) ? (w / l) : float3(0,0,1);
+        }
+        else
+        {
+            if (q.x >= q.y && q.x >= q.z) gradAbs = float3(1,0,0);
+            else if (q.y >= q.z)         gradAbs = float3(0,1,0);
+            else                         gradAbs = float3(0,0,1);
+        }
+
+        // account for abs(): d/dp abs(p) = sign(p)
+        float3 nObj = gradAbs * sign(pObj);
+
+        // back to world space
+        float3 nWorld = mul(transpose(invModelMatrix), float4(nObj, 0.0)).xyz;
+        return normalize(nWorld);
 
         // TODO: Student implementation ends here.
     }

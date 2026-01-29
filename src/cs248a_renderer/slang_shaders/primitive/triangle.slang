@@ -22,54 +22,46 @@ public struct Triangle : IRayCastable
      */
     public Optional<RayHitResult> hit(Ray ray)
     {
-        // float3 e1 = vertices[2] - vertices[0]; 
-        // float3 e2 = vertices[1] - vertices[0]; 
-        // float3 n = normalize(cross(e1, e2)); 
+        float3 v0 = vertices[0];
+        float3 v1 = vertices[1];
+        float3 v2 = vertices[2];
 
-        // float3 ds[3]; 
-        // for (int i = 0; i < 3; i ++){
-        //     ds[i] = -dot(n, vertices[i]); 
-        // }
+        float3 e1 = v1 - v0;
+        float3 e2 = v2 - v0;
 
+        float3 pvec = cross(ray.direction, e2);
+        float det = dot(e1, pvec);
 
+        const float eps = 1e-8;
+        if (abs(det) < eps)
+            return none;
 
-        // TODO: Student implementation starts here.
-        float2 v0 = float2(vertices[0].x, vertices[0].y);
-        float2 v1 = float2(vertices[1].x, vertices[1].y);
-        float2 v2 = float2(vertices[2].x, vertices[2].y);
+        float invDet = 1.0 / det;
 
-        float norm_x = ray.origin.x;
-        float norm_y = ray.origin.y;
+        float3 tvec = ray.origin - v0;
+        float u = dot(tvec, pvec) * invDet;
+        if (u < 0.0 || u > 1.0)
+            return none;
 
-        float A_0 = v1.y - v0.y; 
-        float A_1 = v2.y - v1.y; 
-        float A_2 = v0.y - v2.y; 
+        float3 qvec = cross(tvec, e1);
+        float v = dot(ray.direction, qvec) * invDet;
+        if (v < 0.0 || (u + v) > 1.0)
+            return none;
 
-        float B_0 = v0.x - v1.x; 
-        float B_1 = v1.x - v2.x; 
-        float B_2 = v2.x - v0.x; 
+        float t = dot(e2, qvec) * invDet;
+        if (t < ray.tRange.x || t > ray.tRange.y)
+            return none;
 
-        float C_0 = v0.y*(v1.x - v0.x) - v0.x*(v1.y - v0.y);
-        float C_1 = v1.y*(v2.x - v1.x) - v1.x*(v2.y - v1.y);
-        float C_2 = v2.y*(v0.x - v2.x) - v2.x*(v0.y - v2.y);
-
-        float L_0 = A_0 * norm_x + B_0 * norm_y + C_0; 
-        float L_1 = A_1 * norm_x + B_1 * norm_y + C_1; 
-        float L_2 = A_2 * norm_x + B_2 * norm_y + C_2; 
- 
         RayHitResult outHit;
-        outHit.t = vertices[0].z; 
-        float3 n = float3(0.0, 0.0, 1.0);
-        outHit.normal = n; 
+        outHit.t = t;
 
-        if (L_0 <= 0 && L_1 <= 0 && L_2 <= 0){  
-            return Optional<RayHitResult>(outHit);
-        }
-        else{
-            return Optional<RayHitResult>();
-        }
-        return Optional<RayHitResult>();
+        float3 n = normalize(cross(e1, e2));
 
-        // TODO: Student implementation ends here.
+        if (dot(n, ray.direction) > 0.0)
+            n = -n;
+
+        outHit.normal = n;
+
+        return outHit; // implicit Optional wrapping
     }
 }
